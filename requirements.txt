@@ -1,0 +1,4 @@
+streamlit
+openai
+newspaper3k
+python-dotenv
