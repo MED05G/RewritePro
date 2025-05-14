@@ -48,52 +48,72 @@ def extract_text_from_url(url):
 
 
 def get_prompt(text, article_type):
-    if article_type == "travel":
-        return f"""
-        Rewrite the following travel article in 800 words, avoiding plagiarism. Follow these strict guidelines:
+    core = f"""
+Rewrite the following article in about 600–800 words (no less than 600), avoiding plagiarism. Follow the structure and instructions below carefully:
 
-        1. Start with an interactive greeting (e.g., “Friends,” “Readers,” “Lykkers”).
-        2. Use <h3> for each section heading (max 3 words); begin the intro and end with a conclusion.
-        3. Each paragraph must be under 4 lines.
-        4. Highlight key terms (locations, concepts, etc.) with <b> and </b>.
-        5. Ensure specific, vivid detail: include costs, transportation, time info, etc.
-        6. Avoid first-person language and vague writing.
-        7. The content must reflect E-E-A-T.
-        8. Avoid inappropriate content: religion, war, politics, pork, beef, alcohol, nudity, etc.
-        9. Grammar must be native-level.
-        10. End with:
-            - A creative title (≤28 chars)
-            - A vivid summary (≤20 words)
+1. Start with an interactive intro (use “Lykkers”, “Friends”, or “Readers” when appropriate).
+2. Be specific, vivid, and thematic—avoid vague writing.
+3. Use clear subheadings. Each paragraph must:
+   - Have a subtitle ≤3 words.
+   - Be ≤4 lines.
+   - Begin with <h3> and end with </h3>.
+4. Bold all important terms with <b> and </b>.
+5. Avoid first-person language.
+6. No grammatical errors or AI‑style phrasing.
+7. Follow E‑E‑A‑T principles.
+8. Ensure correct English punctuation.
+9. Prohibited topics: war, religion, alcohol, nudity, politics, pork, beef, LGBTQ+ references, bars/clubs, skin color.
+10. Last paragraph is a reflective, actionable conclusion.
+"""
 
-        Article:
-
-        {text}
-        """
-
-    elif article_type == "food":
-        return f"""
-        Rewrite the following food/recipe article in 800 words, avoiding plagiarism. Structure and format as follows:
-
-        1. Warm greeting (e.g., “Lykkers, ready for a tasty treat?”).
-        2. Use <h3> subheadings (e.g., <h3>Ingredients</h3>, <h3>Steps</h3>).
-        3. Each paragraph under 4 lines.
-        4. Highlight key terms with <b>.
-        5. For recipes, include:
-            - Exact ingredient list
-            - Step-by-step numbered instructions
-        6. Add value: flavor notes, tips, presentation, background.
-        7. Use clear, natural tone. No generic advice or first-person.
-        8. Avoid inappropriate topics.
-        9. End with:
-            - Catchy title (≤28 chars)
-            - Summary (≤20 words)
-
-        Article:
-
-        {text}
-        """
+    if article_type == "food":
+        spec = """
+Additional for **Food**:
+- Warm, sensory style: focus on taste, texture, aroma, presentation.
+- Include specific ingredients, techniques, local context.
+- Provide approximate ingredient costs, prep time, tools.
+"""
+    elif article_type == "travel":
+        spec = """
+Additional for **Travel**:
+- Vivid scene: places, activities, transport, local culture, exact locations.
+- Include budget tips: routes, times, costs, packing list.
+- Highlight hidden gems or local secrets.
+"""
+    elif article_type == "medical":
+        spec = """
+Additional for **Medical**:
+- Professional tone, expert‑backed content.
+- Explain symptoms, diagnosis steps, treatments, when to seek care.
+- Reference authoritative terms (e.g., <b>CDC guidelines</b>, <b>clinical trials</b>).
+- Comply with YMYL: factual, no sensationalism.
+"""
+    elif article_type == "finance":
+        spec = """
+Additional for **Finance**:
+- Clear actionable advice: managing debt, saving, investing basics.
+- Include figures: fees, rates, common pitfalls.
+- Tone may be professional or relatable.
+- Live examples: <b>credit score</b>, <b>loan interest</b>, <b>emergency fund</b>.
+"""
+    elif article_type == "general":
+        spec = """
+Additional for **General**:
+- Clear, relaxed tone with everyday examples.
+- Offer fresh perspective on lifestyle/knowledge topics.
+- Avoid clichés or overly broad statements.
+"""
     else:
-        raise ValueError("Invalid article_type; choose 'travel' or 'food'.")
+        raise ValueError("Invalid article_type; choose 'food', 'travel', 'medical', 'finance', or 'general'.")
+
+    ending = """
+Finally:
+- Provide a global title ≤28 characters (creative, engaging).
+- Provide a summary ≤20 words using rhetoric (suspense, exaggeration, question, reversal).
+Article:
+{text}
+"""
+    return (core + spec + ending).format(text=text)
 
 
 def rewrite_article(text, article_type):
@@ -123,13 +143,17 @@ def rewrite_article(text, article_type):
 
 
 # ------------------------
-# Streamlit UI (Clean)
+# Streamlit UI
 # ------------------------
 
 st.set_page_config(page_title="RewritePro", layout="centered")
 st.title("📄 RewritePro")
 
-article_type = st.radio("Choose article type:", ("travel", "food"))
+article_type = st.radio(
+    "Choose article type:",
+    ("food", "travel", "medical", "finance", "general")
+)
+
 url_input = st.text_area("Paste article URLs (one per line):", height=200)
 start = st.button("🛠 Rewrite and Prepare ZIP")
 
@@ -151,7 +175,8 @@ if start:
                 rewritten = rewrite_article(text, article_type)
                 if not rewritten:
                     continue
-                filename = f"{''.join(c if c.isalnum() else '_' for c in title)[:50]}_{i}.txt"
+                safe_title = ''.join(c if c.isalnum() else '_' for c in title)[:50]
+                filename = f"{safe_title}_{i}.txt"
                 content = f"// {title} //\nSource: {url}\n\n{rewritten}"
                 zip_file.writestr(filename, content)
                 success_count += 1
